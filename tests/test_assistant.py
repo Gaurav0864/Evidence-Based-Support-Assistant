@@ -5,6 +5,7 @@ from threading import Thread
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+from unittest.mock import patch
 
 from app import create_server
 from knowledge import (
@@ -14,6 +15,7 @@ from knowledge import (
     load_examples,
     load_sources,
 )
+from openai_client import OpenAIRequestError
 
 
 class EvidenceAssistantTests(unittest.TestCase):
@@ -132,6 +134,94 @@ class EvidenceAssistantTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as error:
             urlopen(base_url + "/missing")
         self.assertEqual(error.exception.code, 404)
+
+    def test_openai_route_exposes_status_but_not_key_and_uses_retrieved_sources(self):
+        ai_config = {"api_key": "test-secret", "model": "gpt-test"}
+        server = create_server(
+            self.sources, self.examples, port=0, ai_config=ai_config
+        )
+        thread = Thread(target=server.serve_forever)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(thread.join)
+        self.addCleanup(server.shutdown)
+        base_url = "http://127.0.0.1:{}".format(server.server_address[1])
+
+        with urlopen(base_url + "/api/status") as response:
+            status = json.loads(response.read().decode("utf-8"))
+        self.assertTrue(status["ai_enabled"])
+        self.assertEqual(status["model"], "gpt-test")
+        self.assertNotIn("test-secret", json.dumps(status))
+
+        request = Request(
+            base_url + "/api/ask",
+            data=json.dumps(
+                {"question": "What is the safe retry guidance for HTTP 429 API requests?"}
+            ).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with patch(
+            "app.generate_answer",
+            return_value={
+                "answer": "Follow the documented retry interval.",
+                "citation_ids": ["RUNBOOK-API-429"],
+                "abstained": False,
+            },
+        ) as generate_mock:
+            with urlopen(request) as response:
+                result = json.loads(response.read().decode("utf-8"))
+
+        self.assertTrue(result["ai_used"])
+        self.assertEqual(result["mode"], "openai")
+        self.assertEqual(result["model"], "gpt-test")
+        self.assertEqual(
+            [source["id"] for source in result["sources"]], ["RUNBOOK-API-429"]
+        )
+        self.assertEqual(generate_mock.call_args.args[0], self.examples[2]["question"])
+
+        unsupported_request = Request(
+            base_url + "/api/ask",
+            data=json.dumps(
+                {"question": "Does the product support voice cloning in the mobile app?"}
+            ).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with patch("app.generate_answer") as generate_mock:
+            with urlopen(unsupported_request) as response:
+                unsupported = json.loads(response.read().decode("utf-8"))
+        self.assertTrue(unsupported["abstained"])
+        generate_mock.assert_not_called()
+
+    def test_openai_failure_is_reported_instead_of_silently_using_local_answer(self):
+        server = create_server(
+            self.sources,
+            self.examples,
+            port=0,
+            ai_config={"api_key": "test-secret", "model": "gpt-test"},
+        )
+        thread = Thread(target=server.serve_forever)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(thread.join)
+        self.addCleanup(server.shutdown)
+        request = Request(
+            "http://127.0.0.1:{}/api/ask".format(server.server_address[1]),
+            data=json.dumps(
+                {"question": "What is the safe retry guidance for HTTP 429 API requests?"}
+            ).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with patch(
+            "app.generate_answer", side_effect=OpenAIRequestError("Provider unavailable.")
+        ):
+            with self.assertRaises(HTTPError) as error:
+                urlopen(request)
+        self.assertEqual(error.exception.code, 502)
+        error_body = json.loads(error.exception.read().decode("utf-8"))
+        self.assertEqual(error_body["error"], "Provider unavailable.")
 
 
 if __name__ == "__main__":

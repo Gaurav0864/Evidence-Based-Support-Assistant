@@ -136,6 +136,8 @@ def answer_question(sources, question):
             "answer": ABSTAIN_ANSWER,
             "abstained": True,
             "sources": [],
+            "ai_used": False,
+            "mode": "evidence",
         }, None
 
     citations = []
@@ -149,7 +151,9 @@ def answer_question(sources, question):
             }
         )
     return {
-        "answer": "Based on the documented guidance, see the cited excerpts below.",
+        "answer": "Evidence found in the cited local guide excerpts.",
         "abstained": False,
         "sources": citations,
+        "ai_used": False,
+        "mode": "evidence",
     }, None

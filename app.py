@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from knowledge import answer_question, load_examples, load_sources
+from openai_client import OpenAIRequestError, generate_answer, load_openai_config
 
 
 ROOT = Path(__file__).resolve().parent
@@ -24,9 +25,10 @@ STATIC_FILES = {
 class AssistantRequestHandler(BaseHTTPRequestHandler):
     """Serve the local page and the evidence-grounded question API."""
 
-    def __init__(self, *args, sources, examples, **kwargs):
+    def __init__(self, *args, sources, examples, ai_config=None, **kwargs):
         self.sources = sources
         self.examples = examples
+        self.ai_config = ai_config
         super().__init__(*args, **kwargs)
 
     def do_GET(self):
@@ -47,6 +49,13 @@ class AssistantRequestHandler(BaseHTTPRequestHandler):
         elif path == "/api/examples":
             self._send_json(
                 [{"question": example["question"]} for example in self.examples]
+            )
+        elif path == "/api/status":
+            self._send_json(
+                {
+                    "ai_enabled": self.ai_config is not None,
+                    "model": self.ai_config["model"] if self.ai_config else None,
+                }
             )
         elif path in STATIC_FILES:
             relative_path, content_type = STATIC_FILES[path]
@@ -87,6 +96,44 @@ class AssistantRequestHandler(BaseHTTPRequestHandler):
         if error:
             self._send_json({"error": error}, status=400)
             return
+        if result["abstained"] or self.ai_config is None:
+            self._send_json(result)
+            return
+
+        try:
+            ai_result = generate_answer(
+                payload["question"].strip(), result["sources"], self.ai_config
+            )
+        except OpenAIRequestError as error:
+            self._send_json({"error": str(error)}, status=502)
+            return
+
+        if ai_result["abstained"]:
+            result.update(
+                {
+                    "answer": ai_result["answer"],
+                    "abstained": True,
+                    "sources": [],
+                    "ai_used": True,
+                    "mode": "openai",
+                    "model": self.ai_config["model"],
+                }
+            )
+        else:
+            cited_ids = set(ai_result["citation_ids"])
+            result.update(
+                {
+                    "answer": ai_result["answer"],
+                    "sources": [
+                        source
+                        for source in result["sources"]
+                        if source["id"] in cited_ids
+                    ],
+                    "ai_used": True,
+                    "mode": "openai",
+                    "model": self.ai_config["model"],
+                }
+            )
         self._send_json(result)
 
     def _send_file(self, path, content_type):
@@ -118,9 +165,16 @@ class AssistantRequestHandler(BaseHTTPRequestHandler):
         )
 
 
-def create_server(sources, examples, host=DEFAULT_HOST, port=DEFAULT_PORT):
+def create_server(
+    sources, examples, host=DEFAULT_HOST, port=DEFAULT_PORT, ai_config=None
+):
     """Build a local HTTP server with the validated assistant data."""
-    handler = partial(AssistantRequestHandler, sources=sources, examples=examples)
+    handler = partial(
+        AssistantRequestHandler,
+        sources=sources,
+        examples=examples,
+        ai_config=ai_config,
+    )
     return ThreadingHTTPServer((host, port), handler)
 
 
@@ -144,8 +198,12 @@ def main(argv=None):
     try:
         sources = load_sources()
         examples = load_examples()
+        ai_config = load_openai_config()
     except ValueError as error:
-        print("Assistant data error: {}".format(error), file=sys.stderr)
+        print("Assistant configuration error: {}".format(error), file=sys.stderr)
+        return 1
+    except OSError as error:
+        print("Could not read local AI settings: {}".format(error), file=sys.stderr)
         return 1
 
     if args.list_sources:
@@ -158,6 +216,28 @@ def main(argv=None):
         if error:
             print(error, file=sys.stderr)
             return 2
+        if not result["abstained"] and ai_config:
+            try:
+                ai_result = generate_answer(args.ask.strip(), result["sources"], ai_config)
+            except OpenAIRequestError as error:
+                print(str(error), file=sys.stderr)
+                return 1
+            result.update(
+                {
+                    "answer": ai_result["answer"],
+                    "abstained": ai_result["abstained"],
+                    "ai_used": True,
+                    "mode": "openai",
+                    "model": ai_config["model"],
+                }
+            )
+            if ai_result["abstained"]:
+                result["sources"] = []
+            else:
+                cited_ids = set(ai_result["citation_ids"])
+                result["sources"] = [
+                    source for source in result["sources"] if source["id"] in cited_ids
+                ]
         print(result["answer"])
         for citation in result["sources"]:
             print(
@@ -174,7 +254,9 @@ def main(argv=None):
     if not 1 <= args.port <= 65535:
         parser.error("--port must be between 1 and 65535")
 
-    server = create_server(sources, examples, args.host, args.port)
+    server = create_server(
+        sources, examples, args.host, args.port, ai_config=ai_config
+    )
     print("Evidence-Based Support Assistant running at http://{}:{}/".format(
         args.host, args.port
     ))

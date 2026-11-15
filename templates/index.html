@@ -19,7 +19,7 @@
       <p class="eyebrow">Answers from fictional support guides</p>
       <h1>Helpful answers should show their evidence.</h1>
       <p>Ask a support question. The assistant quotes matching guidance and names its sources. If the guides do not cover it, it will say so.</p>
-      <p class="privacy-note">No external AI service is used. Your question stays in this local app.</p>
+      <p class="privacy-note" id="ai-status" role="status">Checking AI settings…</p>
     </section>
 
     <section class="workspace" aria-labelledby="ask-heading">
@@ -35,7 +35,7 @@
           <label for="question">What do you need help with?</label>
           <textarea id="question" name="question" maxlength="500" required placeholder="Example: What should I check for an HTTP 401 sign-in failure?"></textarea>
           <div class="form-footer">
-            <span class="note">Answers include only text found in the guides.</span>
+            <span class="note">AI drafts use matched excerpts; check the cited sources.</span>
             <button type="submit" id="ask-button">Find evidence</button>
           </div>
           <p class="form-error" id="form-error" role="alert" hidden></p>

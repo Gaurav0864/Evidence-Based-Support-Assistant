@@ -135,6 +135,15 @@ h3 {
   font-weight: 700;
 }
 
+.ai-draft-note {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--mint);
+  color: var(--teal-dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

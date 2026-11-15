@@ -24,12 +24,23 @@
       result.answer
     );
 
+    if (result.ai_used) {
+      addTextElement(
+        answerContent,
+        "p",
+        "ai-draft-note",
+        "AI draft (" + result.model + "). Check the source excerpts before using it."
+      );
+    }
+
     if (result.abstained) {
       addTextElement(
         answerContent,
         "p",
         "note",
-        "No sources are cited because the available guides do not support this answer."
+        result.ai_used
+          ? "The answer was not supported by the matched guides, so no sources are cited."
+          : "No sources are cited because the available guides do not support this answer."
       );
       return;
     }
@@ -81,6 +92,19 @@
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     ask(questionInput.value);
+  });
+
+  fetch("/api/status").then(function (response) {
+    if (!response.ok) throw new Error("Could not load AI settings.");
+    return response.json();
+  }).then(function (status) {
+    const message = status.ai_enabled
+      ? "OpenAI is enabled (" + status.model + "). Your question and matched guide excerpts are sent to OpenAI for a draft."
+      : "Evidence-only mode: no question is sent outside this computer. Add an OpenAI key in your local .env file to enable AI.";
+    document.getElementById("ai-status").textContent = message;
+  }).catch(function () {
+    document.getElementById("ai-status").textContent =
+      "AI settings could not be checked. Evidence search is still available.";
   });
 
   Promise.all([
