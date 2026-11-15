@@ -39,6 +39,18 @@ The app works without an API key in **evidence-only mode**. To enable OpenAI:
 
 The key is read by the local server and sent to OpenAI only in the API authorization header; it is never sent to the browser or committed. The app sends OpenAI only the question and matching fictional guide excerpts. API use may incur charges. Never use real customer data or logs unless your company has approved that use.
 
+## Screenshots
+
+The sample answer below was captured in evidence-only mode; no API key was configured.
+
+### Question page
+
+![Evidence-Based Support Assistant question page](screenshots/home.png)
+
+### Answer with its cited guide excerpt
+
+![Sample HTTP 429 answer and source citation](screenshots/evidence-answer.png)
+
 ## Try it
 
 Use the sample questions in the browser, or ask from the command line:
@@ -71,6 +83,7 @@ data/test_questions.json       Shared example questions and expected outcomes
 templates/                     Browser page
 static/                        Page styling and interactions
 tests/                         Unit and HTTP route tests
+screenshots/                   Browser screenshots used in this README
 .github/workflows/tests.yml    Automated tests on GitHub
 .vscode/                       VS Code launch setup and extension recommendation
 run.bat                        Windows one-click launcher
