@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Ask fictional support guides and inspect the evidence behind each answer.">
+  <title>Evidence-Based Support Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell nav">
+      <a class="brand" href="/">Evidence-Based Support Assistant</a>
+      <span class="local-label">Local learning demo</span>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <p class="eyebrow">Answers from fictional support guides</p>
+      <h1>Helpful answers should show their evidence.</h1>
+      <p>Ask a support question. The assistant quotes matching guidance and names its sources. If the guides do not cover it, it will say so.</p>
+      <p class="privacy-note">No external AI service is used. Your question stays in this local app.</p>
+    </section>
+
+    <section class="workspace" aria-labelledby="ask-heading">
+      <div class="panel question-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ask a question</p>
+            <h2 id="ask-heading">Search the support guides</h2>
+          </div>
+          <span class="count" id="guide-count">Loading guides…</span>
+        </div>
+        <form id="question-form">
+          <label for="question">What do you need help with?</label>
+          <textarea id="question" name="question" maxlength="500" required placeholder="Example: What should I check for an HTTP 401 sign-in failure?"></textarea>
+          <div class="form-footer">
+            <span class="note">Answers include only text found in the guides.</span>
+            <button type="submit" id="ask-button">Find evidence</button>
+          </div>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+        </form>
+        <div class="examples">
+          <h3>Try a sample question</h3>
+          <div class="example-list" id="examples" aria-label="Sample questions"></div>
+        </div>
+      </div>
+
+      <section class="panel answer-panel" id="answer-panel" aria-live="polite">
+        <p class="eyebrow">Assistant response</p>
+        <div id="answer-content">
+          <h2>Start with a question</h2>
+          <p class="note">The answer and its supporting guide excerpts will appear here.</p>
+        </div>
+      </section>
+    </section>
+
+    <section class="section" aria-labelledby="source-heading">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Knowledge base</p>
+          <h2 id="source-heading">Available fictional guides</h2>
+          <p>These are sample runbooks for practicing evidence-based support—not official product documentation.</p>
+        </div>
+      </div>
+      <div class="source-grid" id="source-list"></div>
+    </section>
+    <footer class="footer">Practice demo only. Verify real incidents with approved sources and authorized tools.</footer>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "GUIDE-AUTH-01",
+    "title": "Sign-in troubleshooting",
+    "section": "Authentication checks",
+    "text": "If a user cannot sign in, confirm the account email and exact error message. For HTTP 401, confirm that the authentication token is present and has not expired. Never ask a user to send a password, token, or secret in a support ticket. If only one user is affected, compare their role with a working account."
+  },
+  {
+    "id": "GUIDE-LEARN-02",
+    "title": "Training content does not load",
+    "section": "Browser playback checks",
+    "text": "When training video playback fails, ask for the course name, approximate time, browser version, and any request ID shown. Confirm the browser allows site cookies and media playback, then retry in a supported browser. If the problem continues, record the exact error and whether other courses load."
+  },
+  {
+    "id": "RUNBOOK-API-429",
+    "title": "API rate-limit responses",
+    "section": "HTTP 429 investigation",
+    "text": "HTTP 429 means the request was rate limited. Check the response Retry-After header and wait for that interval before retrying. Use exponential backoff with a retry limit; do not retry in a tight loop. Compare request volume and timestamps using the request ID, and never include access tokens in an escalation."
+  },
+  {
+    "id": "RUNBOOK-API-502",
+    "title": "Gateway and server errors",
+    "section": "HTTP 5xx investigation",
+    "text": "An HTTP 502 response shows that a gateway returned an error, but it does not by itself confirm the root cause. Record the timestamp and request ID, then check authorized service logs and dependency health. Compare the incident window with recent changes and confirm recovery with a new request."
+  }
+]
